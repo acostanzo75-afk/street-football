@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { RENDER } from '../game/config';
-
-const SKY = 0x9ccfee;
+import { THEME } from './theme';
 
 /**
  * WebGL renderer, scene, lights and resize handling.
- * Deliberately cheap: no shadow maps, no post-processing, capped pixel ratio.
+ * Deliberately cheap: no shadow maps (blob shadows instead), no post-processing,
+ * capped pixel ratio, two lights.
  */
 export class GameRenderer {
   readonly renderer: THREE.WebGLRenderer;
@@ -24,13 +24,15 @@ export class GameRenderer {
 
     this.camera = new THREE.PerspectiveCamera(RENDER.fov, 1, RENDER.near, RENDER.far);
 
-    this.scene.background = new THREE.Color(SKY);
-    this.scene.fog = new THREE.Fog(SKY, 45, 110);
+    // The sky dome (Backdrop) covers the background; this is only a fallback.
+    this.scene.background = new THREE.Color(THEME.sky.horizon);
+    this.scene.fog = new THREE.Fog(THEME.fog.color, THEME.fog.near, THEME.fog.far);
 
-    const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x4a4f45, 1.6);
-    const sun = new THREE.DirectionalLight(0xfff3e0, 1.8);
-    sun.position.set(-8, 20, 6);
-    this.scene.add(hemi, sun);
+    // Golden hour: warm low key light from the left, cool sky fill, warm bounce.
+    const fill = new THREE.HemisphereLight(THEME.light.fillSky, THEME.light.fillGround, THEME.light.fillIntensity);
+    const key = new THREE.DirectionalLight(THEME.light.key, THEME.light.keyIntensity);
+    key.position.set(-9, 11, 5);
+    this.scene.add(fill, key);
 
     this.resize();
     window.addEventListener('resize', this.resize);

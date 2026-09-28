@@ -150,6 +150,11 @@ export const CAMERA = {
   positionDamping: 7,
   lookDamping: 9,
   yawDamping: 2.2,
+  /** Kickoff fly-in (presentation only). */
+  introDuration: 2.2,
+  introOrbit: 1.1,
+  introExtraDistance: 7,
+  introExtraHeight: 6,
 } as const;
 
 export const MATCH = {
@@ -159,9 +164,4 @@ export const MATCH = {
   goalResetDelay: 1.8,
   /** Time the result shows before a fresh match starts. */
   matchEndDelay: 3.2,
-} as const;
-
-export const TEAM_COLORS = {
-  home: 0x2f7cf6,
-  away: 0xe5484d,
 } as const;

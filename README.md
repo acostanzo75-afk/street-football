@@ -5,7 +5,21 @@ in a small walled arena with a third-person camera. The long-term goal is 1v1 on
 multiplayer that you join from a shared link. This repo is at the first milestone:
 a local, single-player playable prototype.
 
-## Current milestone — 1: local prototype
+## Current milestone — 1.5: visual reset
+
+The game is presented as a stylised golden-hour rooftop street cage:
+- procedural toon-shaded footballer with outlines and idle, run, dribble and kick animation
+- stylised ball
+- textured turf pitch
+- cage with signage boards, fencing and floodlights
+- skyline backdrop
+- broadcast-style HUD
+- animated goal banners
+- splash screen and a kickoff camera sweep
+
+Everything is generated from code (no image assets). The colour palette is in `src/render/theme.ts`.
+
+### Milestone 1 — local prototype
 
 - One controllable footballer with accelerating, arcade-style movement
 - Physical football (Rapier) with light dribbling assistance, never glued to the player
@@ -18,7 +32,8 @@ a local, single-player playable prototype.
 
 ## Tech stack
 
-TypeScript (strict) · Vite · Three.js · Rapier (`@dimforge/rapier3d-compat`) · plain DOM/CSS for UI.
+TypeScript (strict) · Vite · Three.js · Rapier (`@dimforge/rapier3d-compat`) · plain DOM/CSS for UI ·
+Barlow Condensed font (self-hosted via `@fontsource`).
 
 ## Setup
 
@@ -38,6 +53,8 @@ npm run preview  # serve the production build
 ```
 
 The build uses a relative base path, so `dist/` can be served from any sub-folder.
+
+Add `?debug` to the URL to log fps, draw calls and triangles once per second.
 
 ## Controls
 
@@ -83,6 +100,8 @@ See `CLAUDE.md` for responsibilities, conventions and multiplayer constraints.
 - The JS bundle is about 1.8 MB gzipped, mostly Rapier's WASM, which the compat package embeds as base64. The game chunk loads lazily behind a loading screen.
 - No audio, no pause menu, no fullscreen request.
 - There are no automated tests yet. Headless Chromium was used for manual verification.
+- The skyline is built from simple instanced blocks. It works as a silhouette but is the least polished layer.
+- The character has no facial animation, and all players share one body shape.
 
 ## Roadmap
 

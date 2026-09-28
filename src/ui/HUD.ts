@@ -1,40 +1,62 @@
 import type { Score } from '../game/types';
 
+export type BannerVariant = 'home' | 'away' | 'neutral';
+
+/** Time reserved at the end of a banner for its exit animation. */
+const BANNER_EXIT = 0.35;
+
 /**
- * Minimal HTML overlay: score, match clock, and a transient centre message.
- * DOM writes only happen when the displayed value actually changes.
+ * Arcade sports HUD: a compact broadcast-style scoreboard with the clock
+ * integrated underneath, and an animated centre banner for GOAL / KICK OFF /
+ * results. DOM writes only happen when a value changes.
  */
 export class HUD {
   private readonly homeScore: HTMLSpanElement;
   private readonly awayScore: HTMLSpanElement;
-  private readonly clock: HTMLDivElement;
-  private readonly message: HTMLDivElement;
-  private messageTimer = 0;
+  private readonly clock: HTMLSpanElement;
+  private readonly banner: HTMLDivElement;
+  private readonly bannerTitle: HTMLDivElement;
+  private readonly bannerSub: HTMLDivElement;
+  private bannerTimer = 0;
   private shownSeconds = -1;
+  private lastScore: Score = { home: 0, away: 0 };
 
   constructor(parent: HTMLElement) {
     const root = document.createElement('div');
     root.className = 'hud';
     root.innerHTML = `
       <div class="scoreboard">
-        <span class="team home">YOU</span>
-        <span class="score" data-home>0</span>
-        <span class="dash">-</span>
-        <span class="score" data-away>0</span>
-        <span class="team away">OPP</span>
+        <div class="sb-row">
+          <div class="sb-team sb-home"><span>YOU</span></div>
+          <div class="sb-center">
+            <span class="sb-score" data-home>0</span>
+            <span class="sb-sep"></span>
+            <span class="sb-score" data-away>0</span>
+          </div>
+          <div class="sb-team sb-away"><span>OPP</span></div>
+        </div>
+        <div class="sb-clock"><span data-clock>3:00</span></div>
       </div>
-      <div class="clock" data-clock>3:00</div>
-      <div class="message" data-message></div>
-      <div class="hint">WASD / Arrows move · Space shoot</div>
+      <div class="banner" data-banner>
+        <div class="banner-band"></div>
+        <div class="banner-title" data-banner-title></div>
+        <div class="banner-sub" data-banner-sub></div>
+      </div>
+      <div class="hint"><kbd>WASD</kbd> move <kbd>Space</kbd> shoot</div>
     `;
     parent.appendChild(root);
     this.homeScore = query(root, '[data-home]');
     this.awayScore = query(root, '[data-away]');
     this.clock = query(root, '[data-clock]');
-    this.message = query(root, '[data-message]');
+    this.banner = query(root, '[data-banner]');
+    this.bannerTitle = query(root, '[data-banner-title]');
+    this.bannerSub = query(root, '[data-banner-sub]');
   }
 
   setScore(score: Readonly<Score>): void {
+    if (score.home !== this.lastScore.home) bump(this.homeScore);
+    if (score.away !== this.lastScore.away) bump(this.awayScore);
+    this.lastScore = { home: score.home, away: score.away };
     this.homeScore.textContent = String(score.home);
     this.awayScore.textContent = String(score.away);
   }
@@ -48,21 +70,30 @@ export class HUD {
     this.clock.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
   }
 
-  showMessage(text: string, variant: 'home' | 'away' | 'neutral', durationSeconds: number): void {
-    this.message.textContent = text;
-    this.message.dataset.variant = variant;
-    this.message.classList.remove('visible');
-    // Force reflow so the pop animation restarts even if the message was already showing.
-    void this.message.offsetWidth;
-    this.message.classList.add('visible');
-    this.messageTimer = durationSeconds;
+  showBanner(title: string, subtitle: string, variant: BannerVariant, durationSeconds: number): void {
+    this.bannerTitle.textContent = title;
+    this.bannerSub.textContent = subtitle;
+    this.banner.dataset.variant = variant;
+    this.banner.classList.remove('in', 'out');
+    // Force reflow so the entry animation restarts even if a banner is showing.
+    void this.banner.offsetWidth;
+    this.banner.classList.add('in');
+    this.bannerTimer = durationSeconds;
   }
 
   update(dt: number): void {
-    if (this.messageTimer <= 0) return;
-    this.messageTimer -= dt;
-    if (this.messageTimer <= 0) this.message.classList.remove('visible');
+    if (this.bannerTimer <= 0) return;
+    const before = this.bannerTimer;
+    this.bannerTimer -= dt;
+    if (before > BANNER_EXIT && this.bannerTimer <= BANNER_EXIT) this.banner.classList.add('out');
+    if (this.bannerTimer <= 0) this.banner.classList.remove('in', 'out');
   }
+}
+
+function bump(el: HTMLElement): void {
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
 }
 
 function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {

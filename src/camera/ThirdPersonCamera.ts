@@ -19,6 +19,8 @@ export class ThirdPersonCamera {
   private readonly desiredPosition = new THREE.Vector3();
   private readonly desiredLook = new THREE.Vector3();
   private initialised = false;
+  /** Seconds left of the kickoff fly-in. */
+  private introRemaining = 0;
 
   /**
    * @param attackYaw yaw pointing from own goal toward the goal being attacked.
@@ -34,6 +36,12 @@ export class ThirdPersonCamera {
   /** Yaw of the camera's horizontal forward vector (yaw 0 = +Z). */
   getYaw(): number {
     return this.yaw;
+  }
+
+  /** Presentation-only kickoff sweep: starts high and orbited, settles behind the player. */
+  playIntro(): void {
+    this.introRemaining = CAMERA.introDuration;
+    this.initialised = false;
   }
 
   /** Jump straight to the target framing (e.g. after a kickoff reset). */
@@ -55,13 +63,26 @@ export class ThirdPersonCamera {
       }
     }
 
-    const fx = Math.sin(this.initialised ? this.yaw : targetYaw);
-    const fz = Math.cos(this.initialised ? this.yaw : targetYaw);
+    // Intro: 1 at the start of the sweep, easing to 0.
+    let intro = 0;
+    if (this.introRemaining > 0) {
+      this.introRemaining = Math.max(0, this.introRemaining - dt);
+      const t = this.introRemaining / CAMERA.introDuration;
+      intro = t * t * (3 - 2 * t);
+    }
+
+    const baseYaw = this.initialised ? this.yaw : targetYaw;
+    const orbitYaw = baseYaw + intro * CAMERA.introOrbit;
+    const fx = Math.sin(orbitYaw);
+    const fz = Math.cos(orbitYaw);
 
     // Pull back a little when the ball is far so both stay in frame.
     const distance =
-      CAMERA.distance + Math.min(ballDist * CAMERA.distancePerBallMetre, CAMERA.maxExtraDistance);
-    this.desiredPosition.set(player.x - fx * distance, CAMERA.height, player.z - fz * distance);
+      CAMERA.distance +
+      Math.min(ballDist * CAMERA.distancePerBallMetre, CAMERA.maxExtraDistance) +
+      intro * CAMERA.introExtraDistance;
+    const height = CAMERA.height + intro * CAMERA.introExtraHeight;
+    this.desiredPosition.set(player.x - fx * distance, height, player.z - fz * distance);
 
     // Look ahead of the player, nudged toward the ball.
     const focusScale = ballDist > 0 ? Math.min(CAMERA.ballFocus, CAMERA.maxBallFocusOffset / ballDist) : 0;
@@ -71,8 +92,9 @@ export class ThirdPersonCamera {
       player.z + fz * CAMERA.lookAhead + toBallZ * focusScale,
     );
 
-    if (!this.initialised) {
-      this.yaw = targetYaw;
+    if (!this.initialised || intro > 0) {
+      // Snap (and follow the intro path exactly) instead of damping toward it.
+      if (!this.initialised) this.yaw = targetYaw;
       this.position.copy(this.desiredPosition);
       this.lookTarget.copy(this.desiredLook);
       this.initialised = true;

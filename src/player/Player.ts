@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
-import { PLAYER, TEAM_COLORS } from '../game/config';
+import { PLAYER } from '../game/config';
+import { THEME } from '../render/theme';
 import type { TeamId } from '../game/types';
 import { wrapAngle } from '../game/math';
 import type { SpawnPoint } from '../arena/ArenaLayout';
@@ -55,7 +56,7 @@ export class Player {
       this.body,
     );
 
-    this.view = new PlayerView(TEAM_COLORS[team]);
+    this.view = new PlayerView(THEME.teams[team]);
     this.syncFromBody();
     this.snapshot();
   }
@@ -100,10 +101,10 @@ export class Player {
     this.snapshot();
   }
 
-  render(alpha: number, frameDt: number): void {
+  render(alpha: number, frameDt: number, dribbling: boolean): void {
     this.renderPosition.lerpVectors(this.prevPosition, this.position, alpha);
     this.renderPosition.y -= CENTER_TO_FEET;
     const yaw = this.prevFacing + wrapAngle(this.facing - this.prevFacing) * alpha;
-    this.view.update(this.renderPosition, yaw, this.horizontalSpeed(), frameDt);
+    this.view.update(this.renderPosition, yaw, this.horizontalSpeed(), dribbling, frameDt);
   }
 }

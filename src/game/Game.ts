@@ -39,6 +39,10 @@ export class Game implements MatchListener {
   private readonly hud: HUD;
   private readonly command = createPlayerCommand();
   private lastTime = 0;
+  /** `?debug` in the URL logs frame time and draw calls once per second. */
+  private readonly debug = new URLSearchParams(window.location.search).has('debug');
+  private debugFrames = 0;
+  private debugElapsed = 0;
 
   private constructor(
     private readonly physics: PhysicsWorld,
@@ -52,7 +56,7 @@ export class Game implements MatchListener {
     scene.add(arena.group);
 
     this.ball = new Ball(physics, this.layout.ballSpawn);
-    scene.add(this.ball.mesh, this.ball.shadow);
+    scene.add(this.ball.view.root);
 
     this.player = new Player(physics, LOCAL_TEAM, this.layout.playerSpawn[LOCAL_TEAM], ATTACK_YAW[LOCAL_TEAM]);
     scene.add(this.player.view.root);
@@ -78,19 +82,23 @@ export class Game implements MatchListener {
 
   start(): void {
     this.lastTime = performance.now();
+    this.cameraRig.playIntro();
+    this.hud.showBanner('KICK OFF', `FIRST TO ${MATCH.winningScore} WINS`, 'neutral', 2.2);
     requestAnimationFrame(this.frame);
   }
 
   // --- MatchListener -------------------------------------------------------
 
   onGoal(event: GoalEvent): void {
-    const text = event.againstLocalTeam ? 'OWN GOAL' : 'GOAL!';
-    this.hud.showMessage(text, event.scoringTeam, MATCH.goalResetDelay);
+    const title = event.againstLocalTeam ? 'OWN GOAL' : 'GOAL!';
+    const { home, away } = event.score;
+    this.hud.showBanner(title, `${home} — ${away}`, event.scoringTeam, MATCH.goalResetDelay);
   }
 
   onMatchEnd(event: MatchEndEvent): void {
-    const text = event.winner === null ? 'DRAW' : event.winner === LOCAL_TEAM ? 'YOU WIN' : 'YOU LOSE';
-    this.hud.showMessage(text, event.winner ?? 'neutral', MATCH.matchEndDelay);
+    const title = event.winner === null ? 'DRAW' : event.winner === LOCAL_TEAM ? 'YOU WIN' : 'YOU LOSE';
+    const { home, away } = event.score;
+    this.hud.showBanner(title, `FULL TIME  ${home} — ${away}`, event.winner ?? 'neutral', MATCH.matchEndDelay);
   }
 
   onResetPositions(): void {
@@ -117,13 +125,26 @@ export class Game implements MatchListener {
 
     const alpha = this.physics.advance(frameDt, this.stepBefore, this.stepAfter);
 
-    this.player.render(alpha, frameDt);
+    this.player.render(alpha, frameDt, this.ballInteraction.isControlling());
     this.ball.render(alpha);
-    this.cameraRig.update(frameDt, this.player.view.root.position, this.ball.mesh.position);
+    this.cameraRig.update(frameDt, this.player.view.root.position, this.ball.renderPosition);
     this.hud.setClock(this.match.getRemainingTime());
     this.hud.update(frameDt);
     this.renderer.render();
+    if (this.debug) this.logStats(frameDt);
   };
+
+  private logStats(frameDt: number): void {
+    this.debugFrames++;
+    this.debugElapsed += frameDt;
+    if (this.debugElapsed < 1) return;
+    const info = this.renderer.renderer.info.render;
+    console.info(
+      `[stats] ${(this.debugFrames / this.debugElapsed).toFixed(0)} fps · ${info.calls} draw calls · ${info.triangles} tris`,
+    );
+    this.debugFrames = 0;
+    this.debugElapsed = 0;
+  }
 
   private readonly stepBefore = (dt: number): void => {
     this.player.snapshot();

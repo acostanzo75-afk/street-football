@@ -1,3 +1,8 @@
+// Self-hosted display font: no third-party request, works offline.
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/barlow-condensed/800.css';
+import '@fontsource/barlow-condensed/800-italic.css';
+import '@fontsource/barlow-condensed/900-italic.css';
 import './style.css';
 
 function preventBrowserGestures(): void {
@@ -32,13 +37,21 @@ async function main(): Promise<void> {
 
   try {
     // Loaded lazily so the loading screen paints while three.js + Rapier (WASM) download.
-    const { Game } = await import('./game/Game');
+    // Canvas textures (signage, shirt number) use the display font, so load it first.
+    const [{ Game }] = await Promise.all([
+      import('./game/Game'),
+      document.fonts.load('italic 900 32px "Barlow Condensed"'),
+    ]);
     const game = await Game.create(container);
     game.start();
-    loading?.remove();
+    if (loading) {
+      loading.classList.add('hidden');
+      loading.addEventListener('transitionend', () => loading.remove(), { once: true });
+    }
   } catch (error) {
     console.error(error);
-    if (loading) loading.textContent = 'Failed to start the game. Please reload.';
+    const tag = loading?.querySelector('.splash-tag');
+    if (tag) tag.textContent = 'Failed to start the game. Please reload.';
   }
 }
 

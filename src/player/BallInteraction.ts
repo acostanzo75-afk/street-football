@@ -18,6 +18,7 @@ export class BallInteraction {
   private shootBuffer = 0;
   private cooldown = 0;
   private controlLockout = 0;
+  private controlling = false;
 
   constructor(
     private readonly player: Player,
@@ -35,8 +36,13 @@ export class BallInteraction {
     if (this.shootBuffer > 0 && this.cooldown === 0 && this.tryShoot(SHOOT.defaultPower)) {
       return { power: SHOOT.defaultPower };
     }
-    if (this.controlLockout === 0) this.assistDribble(dt);
+    this.controlling = this.controlLockout === 0 && this.assistDribble(dt);
     return null;
+  }
+
+  /** True while dribble assistance is acting on the ball (read by presentation). */
+  isControlling(): boolean {
+    return this.controlling;
   }
 
   /** Clears transient timers, e.g. after a kickoff reset. */
@@ -44,6 +50,7 @@ export class BallInteraction {
     this.shootBuffer = 0;
     this.cooldown = 0;
     this.controlLockout = 0;
+    this.controlling = false;
   }
 
   /** `power` is 0..1 so variable shot strength can be added without API changes. */
@@ -87,20 +94,21 @@ export class BallInteraction {
     return true;
   }
 
-  private assistDribble(dt: number): void {
+  /** Returns true if assistance was applied this step. */
+  private assistDribble(dt: number): boolean {
     const { player, ball } = this;
-    if (ball.position.y > DRIBBLE.maxControlHeight) return;
+    if (ball.position.y > DRIBBLE.maxControlHeight) return false;
     const playerSpeed = player.horizontalSpeed();
-    if (playerSpeed < DRIBBLE.minPlayerSpeed) return;
+    if (playerSpeed < DRIBBLE.minPlayerSpeed) return false;
 
     const dx = ball.position.x - player.position.x;
     const dz = ball.position.z - player.position.z;
     const dist = Math.hypot(dx, dz);
-    if (dist > DRIBBLE.controlRadius || dist < 1e-4) return;
+    if (dist > DRIBBLE.controlRadius || dist < 1e-4) return false;
 
     const fx = player.forwardX();
     const fz = player.forwardZ();
-    if ((dx * fx + dz * fz) / dist < DRIBBLE.controlConeCos) return;
+    if ((dx * fx + dz * fz) / dist < DRIBBLE.controlConeCos) return false;
 
     // Desired ball velocity: match the player, plus a spring toward the carry point.
     const carryX = player.position.x + fx * DRIBBLE.carryDistance;
@@ -122,5 +130,6 @@ export class BallInteraction {
     ball.setVelocity(vx, ball.velocity.y, vz);
     // Keep the spin consistent with rolling so the ball doesn't skid visually.
     ball.setAngularVelocity(vz / BALL.radius, 0, -vx / BALL.radius);
+    return true;
   }
 }

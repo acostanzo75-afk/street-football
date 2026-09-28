@@ -23,7 +23,14 @@ export class MobileControls {
     this.shootButton = document.createElement('button');
     this.shootButton.className = 'shoot-button';
     this.shootButton.type = 'button';
-    this.shootButton.textContent = 'SHOOT';
+    // Inline SVG ball icon + label: no image requests, crisp at any DPR.
+    this.shootButton.innerHTML = `
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="20" fill="#fff" stroke="#10131f" stroke-width="3"/>
+        <path d="M24 15l7.6 5.5-2.9 8.9h-9.4l-2.9-8.9z" fill="#10131f"/>
+        <path d="M24 15V5M31.6 20.5l9.4-3M28.7 29.4l5.8 8M19.3 29.4l-5.8 8M16.4 20.5l-9.4-3" stroke="#10131f" stroke-width="2.5"/>
+      </svg>
+      <span>SHOOT</span>`;
     this.shootButton.setAttribute('aria-label', 'Shoot');
 
     this.root.append(this.joystickZone, this.shootButton);
