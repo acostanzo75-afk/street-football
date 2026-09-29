@@ -32,7 +32,13 @@ export class Player {
   private prevFacing = 0;
   private readonly renderPosition = new THREE.Vector3();
 
-  constructor(physics: PhysicsWorld, team: TeamId, spawn: SpawnPoint, initialFacing: number, realShadows: boolean) {
+  constructor(
+    physics: PhysicsWorld,
+    team: TeamId,
+    spawn: SpawnPoint,
+    initialFacing: number,
+    view: { number: string; realShadows: boolean },
+  ) {
     const { rapier, world } = physics;
     this.team = team;
     this.facing = initialFacing;
@@ -56,7 +62,7 @@ export class Player {
       this.body,
     );
 
-    this.view = new PlayerView({ kit: THEME.teams[team], number: '10', realShadows });
+    this.view = new PlayerView({ kit: THEME.teams[team], number: view.number, realShadows: view.realShadows });
     this.syncFromBody();
     this.snapshot();
   }

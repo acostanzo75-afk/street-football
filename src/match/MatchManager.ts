@@ -6,8 +6,8 @@ export type MatchPhase = 'playing' | 'goalScored' | 'ended';
 
 export interface GoalEvent {
   scoringTeam: TeamId;
-  /** The ball went into the goal the local team defends. */
-  againstLocalTeam: boolean;
+  /** The last player to touch the ball was on the team that conceded. */
+  ownGoal: boolean;
   score: Readonly<Score>;
 }
 
@@ -48,8 +48,6 @@ export class MatchManager {
   constructor(
     private readonly layout: ArenaLayout,
     private readonly listener: MatchListener,
-    /** Team controlled on this device; used only to label own goals. */
-    private readonly localTeam: TeamId,
   ) {}
 
   getPhase(): MatchPhase {
@@ -65,7 +63,8 @@ export class MatchManager {
     return Math.max(0, MATCH.durationSeconds - this.elapsed);
   }
 
-  fixedUpdate(dt: number, ball: BallState): void {
+  /** `lastTouch` is the team that touched the ball most recently (for own goals). */
+  fixedUpdate(dt: number, ball: BallState, lastTouch: TeamId | null): void {
     // Safety net: never let a physics glitch lose the ball forever.
     if (ball.y < BALL.lostBelowY) {
       this.listener.onResetPositions();
@@ -75,7 +74,7 @@ export class MatchManager {
     switch (this.phase) {
       case 'playing':
         this.elapsed += dt;
-        this.detectGoal(ball);
+        this.detectGoal(ball, lastTouch);
         if (this.phase === 'playing' && this.getRemainingTime() === 0) this.endMatch();
         break;
       case 'goalScored':
@@ -107,7 +106,7 @@ export class MatchManager {
     this.listener.onResetPositions();
   }
 
-  private detectGoal(ball: BallState): void {
+  private detectGoal(ball: BallState, lastTouch: TeamId | null): void {
     for (const goal of [this.layout.goals.home, this.layout.goals.away]) {
       if (!isInsideBox(goal.trigger, ball.x, ball.y, ball.z)) continue;
       const scoringTeam = otherTeam(goal.defendedBy);
@@ -116,7 +115,7 @@ export class MatchManager {
       this.phase = 'goalScored';
       this.phaseTimer = MATCH.goalResetDelay;
       this.listener.onScoreChanged(this.score);
-      this.listener.onGoal({ scoringTeam, againstLocalTeam: goal.defendedBy === this.localTeam, score: this.score });
+      this.listener.onGoal({ scoringTeam, ownGoal: lastTouch === goal.defendedBy, score: this.score });
       return;
     }
   }

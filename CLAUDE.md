@@ -53,6 +53,8 @@ src/
     Ball.ts               ball body + interpolated render state
     BallView.ts           stylised ball, occlusion silhouette, shadow, ground marker
   camera/ThirdPersonCamera.ts  automatic follow camera
+  ai/
+    BotBrain.ts           opponent AI: attack / chase / defend, emits a PlayerCommand
   input/
     KeyboardInput.ts      WASD/arrows + Space
     TouchInput.ts         pointer-event joystick + SHOOT (multitouch via pointerId)
@@ -81,6 +83,7 @@ src/
 | Player motion | `PlayerController` | read input devices or the camera |
 | Ball handling | `BallInteraction` | attach the ball rigidly |
 | Input devices | `input/*` | touch simulation state |
+| Opponent AI | `ai/BotBrain` | touch physics directly; it only writes a PlayerCommand |
 | Camera | `ThirdPersonCamera` | affect simulation |
 | Presentation | `*View`, `HUD`, `MobileControls`, `render/*` | own gameplay state |
 | Colours | `render/theme.ts` (+ CSS vars in `style.css`) | be hard-coded in views |
@@ -115,6 +118,15 @@ Stylised, playful, premium arcade — never a physics demo, never realistic.
 - Typography: Barlow Condensed (self-hosted via @fontsource), italic heavy weights.
 - Before calling visual work done, screenshot a phone-landscape viewport
   (e.g. 844×390) and critique it. A passing build is not a visual acceptance test.
+
+## Opponent bot
+
+- `Game` holds a list of `Athlete`s (player + controller + ball interaction +
+  command). Human and bot are identical except where the command comes from.
+- Possession arbitration: only the athlete closest to the ball (within the
+  dribble radius) gets dribble assistance each step.
+- `lastTouch` (kick, dribble or body contact) decides own goals.
+- Difficulty lives in `BOT` in `config.ts`; `?bot=easy|normal|hard|off`.
 
 ## Multiplayer direction (design constraints to preserve)
 
