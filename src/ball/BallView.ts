@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BALL } from '../game/config';
 import { createBlobShadow } from '../render/blobShadow';
-import { outlinedMesh, toon } from '../render/materials';
+import { surface } from '../render/materials';
 import { THEME } from '../render/theme';
 
 /** Visual is drawn slightly larger than the collider: easier to track on a phone. */
@@ -9,7 +9,7 @@ const VISUAL_SCALE = 1.12;
 
 /**
  * Stylised football: white shell, navy pentagon panels and a yellow accent band
- * (the band makes spin obvious), outlined, with a see-through silhouette,
+ * (the band makes spin obvious), glossy PBR shading, a see-through silhouette,
  * contact shadow and a faint ground marker.
  */
 export class BallView {
@@ -19,9 +19,11 @@ export class BallView {
   private readonly shadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
 
-  constructor() {
+  constructor(realShadows: boolean) {
     const geometry = createBallGeometry(BALL.radius * VISUAL_SCALE);
-    this.ball = outlinedMesh(geometry, toon(0xffffff, { vertexColors: true, rim: true }));
+    // Glossy leather: the sky environment gives it a readable highlight.
+    this.ball = new THREE.Mesh(geometry, surface(0xffffff, { vertexColors: true, roughness: 0.32 }));
+    this.ball.castShadow = true;
 
     // Silhouette drawn ONLY where something hides the ball (GreaterDepth):
     // the player's body often sits between camera and ball while dribbling.
@@ -38,7 +40,7 @@ export class BallView {
     xray.renderOrder = 3;
     this.ball.add(xray);
 
-    this.shadow = createBlobShadow(BALL.radius * 1.35, 0.55);
+    this.shadow = createBlobShadow(BALL.radius * 1.35, realShadows ? 0.3 : 0.55);
     this.marker = new THREE.Mesh(
       new THREE.RingGeometry(BALL.radius * 1.5, BALL.radius * 1.85, 28).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: THEME.ball.accent, transparent: true, opacity: 0.55, depthWrite: false }),

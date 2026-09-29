@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GOAL } from '../../game/config';
-import { outlinedMesh, toon } from '../../render/materials';
+import { surface } from '../../render/materials';
 import { THEME } from '../../render/theme';
 import type { GoalDefinition } from '../ArenaLayout';
 
@@ -48,7 +48,7 @@ export function createGoalView(goal: GoalDefinition, teamColor: number, netTextu
     bar(r, v(-w / 2, h, d * 0.6), v(w / 2, h, d * 0.6)),
   ];
   const frame = mergeGeometries(frameParts);
-  if (frame) group.add(outlinedMesh(frame, toon(THEME.goalFrame, { rim: true })));
+  if (frame) group.add(shadowed(new THREE.Mesh(frame, surface(THEME.goalFrame, { roughness: 0.35, metalness: 0.2 }))));
 
   const baseParts = [
     bar(r, v(-w / 2, r, 0), v(-w / 2, r, d)),
@@ -56,10 +56,12 @@ export function createGoalView(goal: GoalDefinition, teamColor: number, netTextu
     bar(r, v(-w / 2, r, d), v(w / 2, r, d)),
   ];
   const base = mergeGeometries(baseParts);
-  if (base) group.add(outlinedMesh(base, toon(teamColor)));
+  if (base) group.add(shadowed(new THREE.Mesh(base, surface(teamColor, { roughness: 0.45 }))));
 
   // Net: back slope + roof + two sides, tinted towards the team colour.
-  const netMaterial = new THREE.MeshBasicMaterial({
+  // Lit net (not Basic): it catches sunlight and casts a mesh shadow into the goal.
+  const netMaterial = new THREE.MeshStandardMaterial({
+    roughness: 0.8,
     map: netTexture,
     color: new THREE.Color(teamColor).lerp(new THREE.Color(0xffffff), 0.55),
     alphaTest: 0.45,
@@ -93,6 +95,12 @@ export function createGoalView(goal: GoalDefinition, teamColor: number, netTextu
     netParts.push(side);
   }
   const net = mergeGeometries(netParts);
-  if (net) group.add(new THREE.Mesh(net, netMaterial));
+  if (net) group.add(shadowed(new THREE.Mesh(net, netMaterial)));
   return group;
+}
+
+function shadowed(mesh: THREE.Mesh): THREE.Mesh {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
 }

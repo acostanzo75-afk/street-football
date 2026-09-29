@@ -11,6 +11,7 @@ import { BallInteraction } from '../player/BallInteraction';
 import { Player } from '../player/Player';
 import { PlayerController } from '../player/PlayerController';
 import { GameRenderer } from '../render/GameRenderer';
+import { resolveQuality } from '../render/quality';
 import { HUD } from '../ui/HUD';
 import { MobileControls } from '../ui/MobileControls';
 import { MATCH } from './config';
@@ -29,6 +30,7 @@ const MAX_FRAME_DT = 0.1;
 export class Game implements MatchListener {
   private readonly layout: ArenaLayout;
   private readonly renderer: GameRenderer;
+  private readonly arena: Arena;
   private readonly player: Player;
   private readonly ball: Ball;
   private readonly controller: PlayerController;
@@ -49,16 +51,18 @@ export class Game implements MatchListener {
     container: HTMLElement,
   ) {
     this.layout = createArenaLayout();
-    this.renderer = new GameRenderer(container);
+    const quality = resolveQuality();
+    this.renderer = new GameRenderer(container, quality);
     const scene = this.renderer.scene;
+    const realShadows = quality.shadowMapSize > 0;
 
-    const arena = new Arena(this.layout, physics, this.renderer.maxAnisotropy);
-    scene.add(arena.group);
+    this.arena = new Arena(this.layout, physics, this.renderer.maxAnisotropy, quality.decorDensity);
+    scene.add(this.arena.group);
 
-    this.ball = new Ball(physics, this.layout.ballSpawn);
+    this.ball = new Ball(physics, this.layout.ballSpawn, realShadows);
     scene.add(this.ball.view.root);
 
-    this.player = new Player(physics, LOCAL_TEAM, this.layout.playerSpawn[LOCAL_TEAM], ATTACK_YAW[LOCAL_TEAM]);
+    this.player = new Player(physics, LOCAL_TEAM, this.layout.playerSpawn[LOCAL_TEAM], ATTACK_YAW[LOCAL_TEAM], realShadows);
     scene.add(this.player.view.root);
 
     this.controller = new PlayerController(this.player);
@@ -130,7 +134,8 @@ export class Game implements MatchListener {
     this.cameraRig.update(frameDt, this.player.view.root.position, this.ball.renderPosition);
     this.hud.setClock(this.match.getRemainingTime());
     this.hud.update(frameDt);
-    this.renderer.render();
+    this.arena.update(frameDt);
+    this.renderer.render(frameDt);
     if (this.debug) this.logStats(frameDt);
   };
 
@@ -140,7 +145,7 @@ export class Game implements MatchListener {
     if (this.debugElapsed < 1) return;
     const info = this.renderer.renderer.info.render;
     console.info(
-      `[stats] ${(this.debugFrames / this.debugElapsed).toFixed(0)} fps · ${info.calls} draw calls · ${info.triangles} tris`,
+      `[stats] ${this.renderer.quality.level} · ${(this.debugFrames / this.debugElapsed).toFixed(0)} fps · ${info.calls} draw calls · ${info.triangles} tris`,
     );
     this.debugFrames = 0;
     this.debugElapsed = 0;

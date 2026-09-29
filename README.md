@@ -5,7 +5,18 @@ in a small walled arena with a third-person camera. The long-term goal is 1v1 on
 multiplayer that you join from a shared link. This repo is at the first milestone:
 a local, single-player playable prototype.
 
-## Current milestone — 1.5: visual reset
+## Current milestone — 2: stylised PBR (step 1 of the quality upgrade)
+
+The look moved to stylised PBR, using INKWAVE as the quality bar:
+- soft sky lighting from an environment map baked from the procedural sky
+- real-time sun shadows
+- bloom and colour grading on High
+- a denser city: lit windows, clouds, birds, festoon lights, a neon sign, graffiti and street props
+- a far more expressive character
+
+Quality presets Low, Medium and High are picked automatically; force one with `?quality=`.
+
+### Milestone 1.5 — visual reset
 
 The game is presented as a stylised golden-hour rooftop street cage:
 - procedural toon-shaded footballer with outlines and idle, run, dribble and kick animation
@@ -53,7 +64,7 @@ npm run preview  # serve the production build
 
 The build uses a relative base path, so `dist/` can be served from any sub-folder.
 
-Add `?debug` to the URL to log fps, draw calls and triangles once per second.
+Add `?debug` to the URL to log fps, draw calls and triangles once per second. Add `?quality=low|medium|high` to force a render preset.
 
 ## Controls
 

@@ -14,7 +14,7 @@ import { BallView } from './BallView';
  */
 export class Ball {
   readonly body: RAPIER.RigidBody;
-  readonly view = new BallView();
+  readonly view: BallView;
   /** Interpolated position used by presentation (camera, view). */
   readonly renderPosition = new THREE.Vector3();
 
@@ -27,7 +27,8 @@ export class Ball {
   private readonly prevRotation = new THREE.Quaternion();
   private readonly renderRotation = new THREE.Quaternion();
 
-  constructor(physics: PhysicsWorld, spawn: SpawnPoint) {
+  constructor(physics: PhysicsWorld, spawn: SpawnPoint, realShadows: boolean) {
+    this.view = new BallView(realShadows);
     const { rapier, world } = physics;
     this.body = world.createRigidBody(
       rapier.RigidBodyDesc.dynamic()

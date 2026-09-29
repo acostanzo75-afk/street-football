@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { ARENA, GOAL } from '../game/config';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
-import { createBackdrop } from '../render/Backdrop';
+import { Backdrop } from '../render/Backdrop';
 import { THEME } from '../render/theme';
 import type { ArenaLayout } from './ArenaLayout';
 import { createNetTexture } from './pitchTexture';
 import { createCageView } from './view/CageView';
+import { createDecorView } from './view/DecorView';
 import { createGoalView } from './view/GoalView';
 import { createRooftopView } from './view/RooftopView';
 
@@ -14,22 +15,30 @@ import { createRooftopView } from './view/RooftopView';
  * Colliders and visuals are built from the same numbers but never reference
  * each other, so a headless server can build only the colliders.
  *
- * Visual layers: ground (pitch, rooftop), midground (cage, goals, props),
- * background (sky, skyline).
+ * Visual layers: ground (pitch, rooftop), midground (cage, goals, props,
+ * street decor), background (sky, hills, skyline, clouds, birds).
  */
 export class Arena {
   readonly group = new THREE.Group();
+  private readonly backdrop: Backdrop;
 
-  constructor(layout: ArenaLayout, physics: PhysicsWorld, maxAnisotropy: number) {
+  constructor(layout: ArenaLayout, physics: PhysicsWorld, maxAnisotropy: number, decorDensity: number) {
     buildArenaColliders(physics, layout);
     const netTexture = createNetTexture();
+    this.backdrop = new Backdrop(decorDensity);
     this.group.add(
       createRooftopView(layout, maxAnisotropy),
       createCageView(layout),
       createGoalView(layout.goals.away, THEME.teams.away.primary, netTexture),
       createGoalView(layout.goals.home, THEME.teams.home.primary, netTexture),
-      createBackdrop(),
+      createDecorView(layout, decorDensity),
+      this.backdrop.group,
     );
+  }
+
+  /** Ambient animation only (clouds, birds); never affects gameplay. */
+  update(dt: number): void {
+    this.backdrop.update(dt);
   }
 }
 
