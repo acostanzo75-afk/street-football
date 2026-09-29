@@ -285,24 +285,106 @@ export function createSignageTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/** Lit-window pattern for near skyline buildings. */
-export function createWindowTexture(): THREE.CanvasTexture {
-  const [canvas, ctx] = canvas2d(64, 128);
+/**
+ * Window pattern for near skyline towers: a colour map plus a matching
+ * emissive mask where only the lit windows glow.
+ */
+export function createWindowTextures(): { color: THREE.CanvasTexture; emissive: THREE.CanvasTexture } {
+  const [colorCanvas, c] = canvas2d(64, 128);
+  const [glowCanvas, g] = canvas2d(64, 128);
   const rand = rng(3);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 64, 128);
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, 64, 128);
+  g.fillStyle = '#000000';
+  g.fillRect(0, 0, 64, 128);
   for (let y = 6; y < 128; y += 14) {
     for (let x = 5; x < 64; x += 12) {
       const lit = rand();
-      ctx.fillStyle = lit > 0.72 ? '#ffe1a8' : lit > 0.4 ? '#c9c2e0' : '#a79fc4';
-      ctx.fillRect(x, y, 6, 8);
+      c.fillStyle = lit > 0.72 ? '#ffe1a8' : lit > 0.4 ? '#8f88ad' : '#6f6890';
+      c.fillRect(x, y, 6, 8);
+      if (lit > 0.72) {
+        g.fillStyle = '#ffffff';
+        g.fillRect(x, y, 6, 8);
+      }
     }
+  }
+  const make = (canvas: HTMLCanvasElement): THREE.CanvasTexture => {
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    // Tiled vertically so windows keep a sane size on tall towers.
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 5);
+    return texture;
+  };
+  return { color: make(colorCanvas), emissive: make(glowCanvas) };
+}
+
+/**
+ * Spray-paint piece: chunky bubble letters with a gradient fill, dark outline,
+ * highlight, drips and overspray, on a wall-coloured ground. Fictional text only.
+ */
+export function createGraffitiTexture(text: string, width: number, height: number, seed: number): THREE.CanvasTexture {
+  const [canvas, ctx] = canvas2d(width, height);
+  const rand = rng(seed);
+  ctx.fillStyle = css(THEME.structure.parapet);
+  ctx.fillRect(0, 0, width, height);
+  // Old buffed-out paint patches behind the piece.
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.03 + rand() * 0.04})`;
+    ctx.fillRect(rand() * width, rand() * height * 0.6, 40 + rand() * 160, 20 + rand() * 50);
+  }
+  const fontSize = Math.round(height * 0.78);
+  ctx.font = `italic 900 ${fontSize}px "Barlow Condensed", system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const cx = width / 2;
+  const cy = height / 2 + fontSize * 0.04;
+
+  // Overspray glow behind the letters.
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 79, 163, 0.55)';
+  ctx.shadowBlur = fontSize * 0.25;
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = fontSize * 0.2;
+  ctx.strokeStyle = '#141024';
+  ctx.strokeText(text, cx, cy);
+  ctx.restore();
+
+  const fill = ctx.createLinearGradient(0, cy - fontSize / 2, 0, cy + fontSize / 2);
+  fill.addColorStop(0, '#ffd23f');
+  fill.addColorStop(0.5, '#ff7a2f');
+  fill.addColorStop(1, '#ff4fa3');
+  ctx.fillStyle = fill;
+  ctx.fillText(text, cx, cy);
+
+  // Highlight stripe across the upper third of the letters.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, cy - fontSize * 0.36, width, fontSize * 0.1);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+
+  // Drips running down from the letters.
+  const measured = ctx.measureText(text).width;
+  for (let i = 0; i < 14; i++) {
+    const x = cx - measured / 2 + rand() * measured;
+    const y = cy + fontSize * (0.2 + rand() * 0.15);
+    const len = fontSize * (0.1 + rand() * 0.35);
+    ctx.fillStyle = rand() > 0.5 ? '#ff4fa3' : '#ff7a2f';
+    ctx.fillRect(x, y, 3 + rand() * 3, len);
+    ctx.beginPath();
+    ctx.arc(x + 2.5, y + len, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Spray speckle.
+  for (let i = 0; i < 400; i++) {
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(66,232,224,0.5)' : 'rgba(255,210,63,0.4)';
+    ctx.fillRect(rand() * width, rand() * height, 1.5, 1.5);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  // Tiled vertically so windows keep a sane size on tall towers.
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1, 5);
   return texture;
 }
 

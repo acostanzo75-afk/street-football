@@ -165,3 +165,28 @@ export const MATCH = {
   /** Time the result shows before a fresh match starts. */
   matchEndDelay: 3.2,
 } as const;
+
+export type BotDifficulty = 'easy' | 'normal' | 'hard';
+
+export interface BotTuning {
+  /** Fraction of the player's max speed the bot runs at. */
+  speed: number;
+  /** Seconds between decisions: higher = slower reactions. */
+  thinkInterval: number;
+  /** Random aim error (radians) applied when picking a shot target. */
+  aimError: number;
+  /** Shoots when its distance to the goal line is below this (m). */
+  shootDistance: number;
+  /** Presses the ball carrier when they are closer than this to the bot's goal (m). */
+  pressDistance: number;
+}
+
+/** Opponent AI tuning per difficulty (?bot=easy|normal|hard|off). */
+export const BOT: Record<BotDifficulty, BotTuning> = {
+  easy: { speed: 0.68, thinkInterval: 0.42, aimError: 0.3, shootDistance: 7, pressDistance: 5 },
+  normal: { speed: 0.88, thinkInterval: 0.18, aimError: 0.12, shootDistance: 10.5, pressDistance: 10 },
+  hard: { speed: 0.98, thinkInterval: 0.09, aimError: 0.05, shootDistance: 12.5, pressDistance: 16 },
+};
+
+/** Distance (player centre to ball centre, horizontal) that counts as touching the ball. */
+export const TOUCH_DISTANCE = PLAYER.radius + BALL.radius + 0.15;

@@ -42,6 +42,8 @@ src/
     view/RooftopView.ts   pitch plane, rooftop slab, parapet, floodlights, rooftop props
     view/CageView.ts      kick boards + signage, rails, posts, chain-link fence, goal banners
     view/GoalView.ts      goal frame, team base bars, net
+    view/DecorView.ts     neon billboard, bench + kit bag, cones, ball rack, planters
+    view/geometry.ts      roundedBox / bar / addMerged helpers
   player/
     Player.ts             physics body + sim state (position, velocity, facing)
     PlayerView.ts         stylised procedural footballer + idle/run/dribble/kick animation
@@ -51,6 +53,8 @@ src/
     Ball.ts               ball body + interpolated render state
     BallView.ts           stylised ball, occlusion silhouette, shadow, ground marker
   camera/ThirdPersonCamera.ts  automatic follow camera
+  ai/
+    BotBrain.ts           opponent AI: attack / chase / defend, emits a PlayerCommand
   input/
     KeyboardInput.ts      WASD/arrows + Space
     TouchInput.ts         pointer-event joystick + SHOOT (multitouch via pointerId)
@@ -58,9 +62,11 @@ src/
   match/MatchManager.ts   score, goal detection, phases, clock, resets (no rendering)
   render/
     theme.ts              THE palette: every scene/UI colour comes from here
-    materials.ts          shared toon ramp, rim-light toon materials, outline hulls
-    GameRenderer.ts       WebGLRenderer, scene, lights, fog, resize, DPR cap
-    Backdrop.ts           gradient sky dome + instanced skyline rings
+    materials.ts          surface() PBR materials, glow() HDR emissives, setShadows()
+    quality.ts            Low/Medium/High presets (auto-detected, ?quality= override)
+    GameRenderer.ts       renderer, env map bake, sun + shadows, bloom/grade post (High),
+                          dynamic resolution
+    Backdrop.ts           sky dome, hills, skyline rings (lit windows, tanks), clouds, birds
     blobShadow.ts         cheap fake contact shadows
   ui/
     HUD.ts                broadcast scoreboard + clock, animated centre banner (DOM)
@@ -77,6 +83,7 @@ src/
 | Player motion | `PlayerController` | read input devices or the camera |
 | Ball handling | `BallInteraction` | attach the ball rigidly |
 | Input devices | `input/*` | touch simulation state |
+| Opponent AI | `ai/BotBrain` | touch physics directly; it only writes a PlayerCommand |
 | Camera | `ThirdPersonCamera` | affect simulation |
 | Presentation | `*View`, `HUD`, `MobileControls`, `render/*` | own gameplay state |
 | Colours | `render/theme.ts` (+ CSS vars in `style.css`) | be hard-coded in views |
@@ -101,12 +108,25 @@ Stylised, playful, premium arcade — never a physics demo, never realistic.
 - Palette discipline (`render/theme.ts`): structure is desaturated navy/slate/mauve;
   saturated colour is reserved for gameplay (team blue/coral, yellow accent, ball).
   CSS mirrors the key colours as custom properties — keep them in sync.
-- Characters and ball: `toon()` materials with the shared 3-step ramp and rim light,
-  plus `outlinedMesh()` hulls for strong silhouettes. Oversized head/boots.
-- Environment surfaces use Lambert + procedural canvas textures; no image assets.
+- Look: **stylised PBR** (reference quality bar: INKWAVE). `surface()` = MeshStandardMaterial
+  lit by a PMREM environment baked once from the procedural sky, plus a warm sun.
+  `glow()` = unlit HDR colour for bulbs/neon (blooms on High). No toon ramps, no outlines.
+- Characters: oversized head with real eyes, locks of hair on a spring, headband,
+  textured kit (chest band, number on the back), chunky boots.
+- Environment: procedural canvas textures only (pitch, rooftop, signage, graffiti,
+  windows, neon); rounded boxes (`arena/view/geometry.ts`) instead of raw cubes.
 - Typography: Barlow Condensed (self-hosted via @fontsource), italic heavy weights.
 - Before calling visual work done, screenshot a phone-landscape viewport
   (e.g. 844×390) and critique it. A passing build is not a visual acceptance test.
+
+## Opponent bot
+
+- `Game` holds a list of `Athlete`s (player + controller + ball interaction +
+  command). Human and bot are identical except where the command comes from.
+- Possession arbitration: only the athlete closest to the ball (within the
+  dribble radius) gets dribble assistance each step.
+- `lastTouch` (kick, dribble or body contact) decides own goals.
+- Difficulty lives in `BOT` in `config.ts`; `?bot=easy|normal|hard|off`.
 
 ## Multiplayer direction (design constraints to preserve)
 
@@ -132,19 +152,19 @@ Stylised, playful, premium arcade — never a physics demo, never realistic.
 
 ## Mobile & performance priorities
 
-- Target 60 FPS on modern phones. Pixel ratio capped at 2 (`RENDER.maxPixelRatio`).
-- No shadow maps (blob shadows instead), no post-processing, toon/Lambert/Basic
-  materials only, two lights, one textured plane for all pitch markings.
-- Budget: ~100–110 draw calls and ~14k triangles per frame (check with `?debug`).
-  Use InstancedMesh / `mergeGeometries` for repeated props; merge parts that share
-  a material. The player is the biggest consumer (~40 calls incl. outlines).
-- Fence uses alphaTest (no transparency sorting) and dithers out near the camera.
-- Avoid allocations in the loop: reuse vectors, scratch objects, and the command object.
-  (Rapier's `translation()`/`linvel()` return small objects — acceptable, don't add more.)
-- HUD writes to the DOM only when values change.
-- Touch: pointer events, `touch-action: none`, per-control pointer capture, large
-  targets sized with `vh`-based `clamp()`, safe-area insets respected.
-- Portrait on touch devices shows a rotate overlay; desktop is never blocked.
+- Target 60 FPS on modern phones. Quality presets (`render/quality.ts`):
+  - **Low**: DPR ≤ 1.25, no shadow map (blob shadows), no post, less decor.
+  - **Medium** (default on phones): DPR ≤ 2, 1024 sun shadow map, no post.
+  - **High** (default on desktop): 2048 shadows, MSAA + bloom + colour grade.
+  Dynamic resolution lowers the pixel ratio in 0.25 steps when frames exceed ~19 ms.
+- Vignette is CSS (free). Bloom threshold is 1.0 in linear HDR: only `glow()` objects bloom.
+- Budget (check with `?debug`): ~100 draw calls on Low, ~190 on Medium/High including
+  the shadow pass, ~45–78k triangles. Merge parts that share a material
+  (`addMerged`), instance repeats (posts, bulbs, skyline, birds).
+- Characters cast shadows but don't receive (avoids acne); static props cast + receive.
+- Fence uses alphaTest (no transparency sorting, casts a diamond shadow) and dithers
+  out near the camera.
+- Resize (incl. dynamic resolution) must happen before drawing a frame, never after.
 
 ## Commands
 
@@ -153,5 +173,5 @@ npm install
 npm run dev        # vite dev server (also exposed on LAN for phone testing)
 npm run build      # typecheck + production build
 npm run typecheck
-# append ?debug to the URL to log fps / draw calls / triangles once per second
+# ?debug logs fps / draw calls / triangles once per second; ?quality=low|medium|high forces a preset
 ```

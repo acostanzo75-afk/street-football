@@ -27,8 +27,12 @@ export class BallInteraction {
     private readonly targetGoal: GoalDefinition,
   ) {}
 
-  /** Returns a ShotEvent on the step a kick happens, otherwise null. */
-  fixedUpdate(shootPressed: boolean, dt: number): ShotEvent | null {
+  /**
+   * Returns a ShotEvent on the step a kick happens, otherwise null.
+   * `mayControl` comes from possession arbitration: only the player closest
+   * to the ball gets dribble assistance, so two players never tug-of-war it.
+   */
+  fixedUpdate(shootPressed: boolean, dt: number, mayControl: boolean): ShotEvent | null {
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.controlLockout = Math.max(0, this.controlLockout - dt);
     this.shootBuffer = shootPressed ? SHOOT.inputBuffer : Math.max(0, this.shootBuffer - dt);
@@ -36,7 +40,7 @@ export class BallInteraction {
     if (this.shootBuffer > 0 && this.cooldown === 0 && this.tryShoot(SHOOT.defaultPower)) {
       return { power: SHOOT.defaultPower };
     }
-    this.controlling = this.controlLockout === 0 && this.assistDribble(dt);
+    this.controlling = mayControl && this.controlLockout === 0 && this.assistDribble(dt);
     return null;
   }
 

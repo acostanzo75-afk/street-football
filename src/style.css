@@ -51,6 +51,15 @@ body {
   touch-action: none;
 }
 
+/* Screen-space vignette: free on every quality preset (no post pass needed). */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(120% 95% at 50% 45%, transparent 55%, rgba(20, 14, 40, 0.38) 100%);
+}
+
 /* ---------- Splash / loading ---------- */
 
 .splash {
