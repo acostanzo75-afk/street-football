@@ -1,6 +1,6 @@
 # CLAUDE.md — Street Football
 
-Guidance for future Claude Code sessions working in `street-football/`.
+Guidance for future Claude Code sessions working in this repository.
 
 ## Product vision
 

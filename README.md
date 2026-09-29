@@ -40,7 +40,6 @@ Barlow Condensed font (self-hosted via `@fontsource`).
 Requires Node.js 20.19+ (or 22+).
 
 ```bash
-cd street-football
 npm install
 npm run dev      # open the printed URL; the Network URL works on a phone on the same Wi-Fi
 ```
